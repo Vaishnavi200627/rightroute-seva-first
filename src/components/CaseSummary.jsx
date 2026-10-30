@@ -12,7 +12,8 @@ import {
   AlertOctagon,
   Clock,
   Activity,
-  ClipboardCopy
+  ClipboardCopy,
+  Radio
 } from 'lucide-react';
 import { t } from '../i18n/strings';
 import { tierLabel } from '../lib/engine';
@@ -90,6 +91,8 @@ export default function CaseSummary({
 }) {
   const [copiedHash, setCopiedHash] = useState(false);
   const [ncrpCopied, setNcrpCopied] = useState(false);
+  const [showSosText, setShowSosText] = useState(false);
+  const [sosCopied, setSosCopied] = useState(false);
 
   // Consistent local ref id for this intake
   const localRefId = useMemo(() => {
@@ -333,6 +336,92 @@ export default function CaseSummary({
           <p className="mt-3 text-xs text-slate-400 italic">
             Formatted for the National Cyber Crime Reporting Portal. Review before pasting.
           </p>
+        </div>
+
+        {/* Feature 3: The SOS Text Generator */}
+        <div className="mt-8 bg-gradient-to-r from-red-950/70 via-slate-950 to-red-950/70 border-2 border-red-500/60 rounded-2xl p-5 sm:p-6 shadow-xl shadow-red-950/30">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-red-900/60 gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
+                <Radio className="w-4 h-4 animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                  Emergency Distress Broadcast (SOS)
+                </h3>
+                <p className="text-[11px] text-red-300/80">
+                  Pre-formulated emergency dispatch alert for trusted contacts.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowSosText(true)}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg bg-red-600 hover:bg-red-500 active:bg-red-700 text-white cursor-pointer"
+            >
+              <Radio className="w-3.5 h-3.5" />
+              Generate SOS Message to Trusted Contact
+            </button>
+          </div>
+
+          {showSosText ? (
+            <div className="space-y-3 animate-fade-in">
+              <div className="bg-slate-950 border border-red-900/80 rounded-xl p-4 text-xs sm:text-sm text-red-100 font-sans leading-relaxed select-all">
+                EMERGENCY: I am feeling unsafe. I am currently documenting a cybercrime incident on RightRoute. Please call me or track my location.
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      'EMERGENCY: I am feeling unsafe. I am currently documenting a cybercrime incident on RightRoute. Please call me or track my location.'
+                    );
+                    setSosCopied(true);
+                    setTimeout(() => setSosCopied(false), 2000);
+                  }}
+                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition ${
+                    sosCopied
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700'
+                  }`}
+                >
+                  {sosCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  {sosCopied ? 'Copied!' : 'Copy to Clipboard'}
+                </button>
+
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    'EMERGENCY: I am feeling unsafe. I am currently documenting a cybercrime incident on RightRoute. Please call me or track my location.'
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer noopener"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-emerald-700 hover:bg-emerald-600 text-white transition"
+                >
+                  Send via WhatsApp
+                </a>
+
+                <a
+                  href={`sms:?body=${encodeURIComponent(
+                    'EMERGENCY: I am feeling unsafe. I am currently documenting a cybercrime incident on RightRoute. Please call me or track my location.'
+                  )}`}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition"
+                >
+                  Send via SMS
+                </a>
+              </div>
+
+              {/* Exact required disclaimer */}
+              <p className="text-xs text-red-300/80 italic mt-2">
+                This does not send the message automatically. Copy this text and send it via WhatsApp or SMS to a trusted person.
+              </p>
+            </div>
+          ) : (
+            <p className="text-xs text-red-300/70 italic">
+              Click &quot;Generate SOS Message to Trusted Contact&quot; to prepare an emergency alert text block ready for transmission.
+            </p>
+          )}
         </div>
 
         {/* Legal Mapping Section */}

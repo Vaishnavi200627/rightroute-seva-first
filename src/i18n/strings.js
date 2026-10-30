@@ -76,6 +76,10 @@ export const strings = {
     copyNcrpText: 'Copy to Clipboard',
     ncrpCopied: 'Copied!',
     dpdpNotice: 'Privacy by Design: RightRoute processes all data locally in your browser. We do not upload, store, or track your evidence or personal details, in compliance with DPDP Act principles.',
+    playbookTitle: 'The "First 24 Hours" Emergency Playbook',
+    redactionTitle: 'Privacy Redaction Studio',
+    applyRedactions: 'Apply Redactions & Hash',
+    generateSos: 'Generate SOS Message to Trusted Contact',
     footerVersion: 'Rules v',
     evaluating: 'Matching your answers against the ruleset…'
   },
@@ -157,6 +161,10 @@ export const strings = {
     copyNcrpText: 'क्लिपबोर्ड पर कॉपी करें',
     ncrpCopied: 'कॉपी हो गया!',
     dpdpNotice: 'प्राइवेसी बाय डिज़ाइन: RightRoute आपके ब्राउज़र में सभी डेटा को स्थानीय रूप से प्रोसेस करता है। हम DPDP अधिनियम के सिद्धांतों के अनुपालन में आपके साक्ष्य या व्यक्तिगत विवरण को अपलोड, संग्रहीत या ट्रैक नहीं करते हैं।',
+    playbookTitle: '"पहले 24 घंटे" आपातकालीन प्लेबुक',
+    redactionTitle: 'गोपनीयता संपादन स्टूडियो',
+    applyRedactions: 'संपादन लागू करें और हैश करें',
+    generateSos: 'विश्वसनीय संपर्क के लिए SOS संदेश उत्पन्न करें',
     footerVersion: 'नियम v',
     evaluating: 'आपके उत्तरों को नियमों से मिलाया जा रहा है…'
   },
@@ -238,6 +246,10 @@ export const strings = {
     copyNcrpText: 'क्लिपबोर्डवर कॉपी करा',
     ncrpCopied: 'कॉपी झाले!',
     dpdpNotice: 'प्रायव्हसी बाय डिझाईन: RightRoute तुमच्या ब्राउझरमध्ये सर्व डेटा स्थानिक पातळीवर प्रक्रिया करते. आम्ही DPDP कायद्याच्या तत्त्वांचे पालन करून तुमचे पुरावे किंवा वैयक्तिक तपशील अपलोड, संग्रहित किंवा ट्रॅक करत नाही.',
+    playbookTitle: '"पहिले २४ तास" आणीबाणी मार्गदर्शिका',
+    redactionTitle: 'गोपनीयता संपादन स्टुडिओ',
+    applyRedactions: 'संपादने लागू करा आणि हॅश करा',
+    generateSos: 'विश्वसनीय संपर्कासाठी SOS संदेश तयार करा',
     footerVersion: 'नियम v',
     evaluating: 'तुमची उत्तरे नियमांशी जुळवत आहोत…'
   },
@@ -319,6 +331,10 @@ export const strings = {
     copyNcrpText: 'கிளிப்போர்டுக்கு நகலெடுக்கவும்',
     ncrpCopied: 'நகலெடுக்கப்பட்டது!',
     dpdpNotice: 'வடிவமைப்பு மூலம் தனியுரிமை: RightRoute உங்கள் உலாவியில் அனைத்து தரவையும் உள்ளூரில் செயலாக்குகிறது. DPDP சட்டக் கொள்கைகளுக்கு இணங்க, உங்கள் ஆதாரங்களையோ அல்லது தனிப்பட்ட விவரங்களையோ நாங்கள் பதிவேற்றவோ, சேமிக்கவோ அல்லது கண்காணிக்கவோ மாட்டோம்.',
+    playbookTitle: '"முதல் 24 மணிநேர" அவசர வழிகாட்டி',
+    redactionTitle: 'தனியுரிமை திருத்த அரங்கம்',
+    applyRedactions: 'திருத்தங்களைப் பயன்படுத்தி ஹாஷ் செய்யவும்',
+    generateSos: 'நம்பகமான தொடர்புக்கு SOS செய்தியை உருவாக்கவும்',
     footerVersion: 'விதிகள் v',
     evaluating: 'உங்கள் பதில்களை விதிகளுடன் பொருத்துகிறோம்…'
   },
@@ -400,6 +416,10 @@ export const strings = {
     copyNcrpText: 'ক্লিপবোর্ডে কপি করুন',
     ncrpCopied: 'কপি হয়েছে!',
     dpdpNotice: 'প্রাইভেসি বাই ডিজাইন: RightRoute আপনার ব্রাউজারে স্থানীয়ভাবে সমস্ত ডেটা প্রক্রিয়া করে। আমরা DPDP আইনের নীতি মেনে আপনার প্রমাণ বা ব্যক্তিগত বিবরণ আপলোড, সংরক্ষণ বা ট্র্যাক করি না।',
+    playbookTitle: '"প্রথম ২৪ ঘন্টা" জরুরি প্লেবুক',
+    redactionTitle: 'গোপনীয়তা সম্পাদনা স্টুডিও',
+    applyRedactions: 'সম্পাদনা প্রয়োগ করুন এবং হ্যাশ করুন',
+    generateSos: 'বিশ্বস্ত পরিচিতির জন্য SOS বার্তা তৈরি করুন',
     footerVersion: 'নিয়ম v',
     evaluating: 'আপনার উত্তর নিয়মের সাথে মেলানো হচ্ছে…'
   }

@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Shield, Globe, Languages, ClipboardList, LogOut } from 'lucide-react';
+import { Shield, Globe, Languages, ClipboardList, LogOut, Radio, Copy, Check } from 'lucide-react';
 import { resolveRoute, RULESET_META } from './lib/engine';
 import { ping } from './lib/analytics';
 import { t } from './i18n/strings';
@@ -16,6 +15,77 @@ function Badge({ icon: Icon, label }) {
       <Icon className="w-3 h-3 text-teal-600" />
       {label}
     </span>
+  );
+}
+
+/**
+ * SOS Emergency Text Generator Modal
+ */
+function SosModal({ isOpen, onClose, lang }) {
+  const [copied, setCopied] = useState(false);
+  if (!isOpen) return null;
+  const sosText =
+    'EMERGENCY: I am feeling unsafe. I am currently documenting a cybercrime incident on RightRoute. Please call me or track my location.';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm animate-fade-in">
+      <div className="bg-slate-900 border-2 border-red-500 rounded-3xl p-6 max-w-lg w-full text-white shadow-2xl space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2">
+            <Radio className="w-5 h-5 text-red-500 animate-pulse" />
+            <h3 className="text-sm font-bold uppercase tracking-wider text-red-100">
+              SOS Message Generator
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-7 h-7 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition text-xs"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="bg-slate-950 border border-red-900/80 rounded-xl p-4 text-xs sm:text-sm text-red-100 font-sans leading-relaxed select-all">
+          {sosText}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              navigator.clipboard.writeText(sosText);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 2000);
+            }}
+            className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+              copied ? 'bg-emerald-600 text-white' : 'bg-red-600 hover:bg-red-500 text-white'
+            }`}
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            {copied ? 'Copied!' : 'Copy to Clipboard'}
+          </button>
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(sosText)}`}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="py-2.5 px-3.5 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-600 text-white transition flex items-center gap-1.5"
+          >
+            WhatsApp
+          </a>
+          <a
+            href={`sms:?body=${encodeURIComponent(sosText)}`}
+            className="py-2.5 px-3.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition flex items-center gap-1.5"
+          >
+            SMS
+          </a>
+        </div>
+
+        <p className="text-xs text-red-300/80 italic">
+          This does not send the message automatically. Copy this text and send it via WhatsApp or SMS to a trusted person.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -83,6 +153,7 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [evidenceData, setEvidenceData] = useState(null);
   const [integrityLog, setIntegrityLog] = useState([]);
+  const [showSosModal, setShowSosModal] = useState(false);
 
   function addLog(actionText) {
     const entry = {
@@ -175,6 +246,15 @@ export default function App() {
           </button>
           <div className="flex items-center gap-2">
             <button
+              type="button"
+              onClick={() => setShowSosModal(true)}
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-red-700 hover:text-red-800 bg-red-50 hover:bg-red-100 border border-red-200 px-2.5 py-1.5 rounded-lg transition"
+              title="Generate SOS message to trusted contact"
+            >
+              <Radio className="w-3.5 h-3.5 text-red-600 animate-pulse" />
+              SOS
+            </button>
+            <button
               onClick={() => setView(view === 'summary' ? 'navigator' : 'summary')}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-teal-700 px-3 py-1.5 rounded-lg hover:bg-teal-50 border border-slate-200 bg-white transition shadow-sm"
             >
@@ -262,6 +342,11 @@ export default function App() {
 
       <DpdpFooter lang={lang} />
       <QuickExitButton lang={lang} />
+      <SosModal
+        isOpen={showSosModal}
+        onClose={() => setShowSosModal(false)}
+        lang={lang}
+      />
     </div>
   );
 }

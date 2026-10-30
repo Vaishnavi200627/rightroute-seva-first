@@ -5,6 +5,8 @@ import {
 import { t } from '../i18n/strings';
 import { tierLabel } from '../lib/engine';
 
+import First24HoursPlaybook from './First24HoursPlaybook';
+
 const TIER_STYLES = {
   1: { grad: 'from-rose-500 to-red-600', soft: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-700' },
   2: { grad: 'from-orange-500 to-amber-600', soft: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
@@ -40,6 +42,7 @@ export default function RouteResult({ result, lang, onRestart }) {
   if (!result) return null;
 
   const style = TIER_STYLES[result.tier] || TIER_STYLES[4];
+  const category = result.matchedOn?.find(m => m.key === 'category')?.value || '';
 
   return (
     <section className="animate-fade-in space-y-5">
@@ -124,6 +127,9 @@ export default function RouteResult({ result, lang, onRestart }) {
         )}
 
         <div className="px-6 py-6 space-y-6">
+          {/* Feature 2: The "First 24 Hours" Emergency Playbook */}
+          <First24HoursPlaybook category={category} ruleId={result.ruleId} lang={lang} />
+
           {/* Module C — Actions */}
           <div>
             <ModuleHeader icon={Route} index="C" title={t(lang, 'actionsTitle')} tone="teal" />

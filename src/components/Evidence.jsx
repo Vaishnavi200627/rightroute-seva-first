@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import jsPDF from 'jspdf';
 import {
   FileLock,
@@ -8,7 +8,11 @@ import {
   Download,
   Shield,
   Loader2,
-  FileText
+  FileText,
+  RotateCcw,
+  Eraser,
+  EyeOff,
+  Sparkles
 } from 'lucide-react';
 import { sha256 } from '../lib/hash';
 import { t } from '../i18n/strings';
@@ -120,7 +124,7 @@ export function downloadComplaintDraft(lang = 'en', intake = {}, result = null, 
   const dangerText = formatBool(intake?.physicalDanger);
   const minorText = formatBool(intake?.minor);
 
-  // Concise narrative summary line as requested: e.g. "Category: NCII. Physical Danger: Yes. Minor: No."
+  // Concise narrative summary line
   doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(30, 41, 59);
@@ -459,33 +463,202 @@ export default function Evidence({
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Redactor State
+  const [isImage, setIsImage] = useState(false);
+  const [imageObj, setImageObj] = useState(null);
+  const [redactions, setRedactions] = useState([]);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [dragStart, setDragStart] = useState(null);
+  const [currentRect, setCurrentRect] = useState(null);
+  const canvasRef = useRef(null);
+
   useEffect(() => {
     if (evidenceData && !fileRecord) {
       setFileRecord(evidenceData);
     }
   }, [evidenceData]);
 
+  // Redraw canvas whenever imageObj, redactions, or active drag changes
+  const redraw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !imageObj) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Draw base image
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+
+    // Draw committed black redaction rectangles
+    ctx.fillStyle = '#000000';
+    for (const r of redactions) {
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+
+    // Draw current active rectangle guide
+    if (currentRect && (currentRect.w > 0 || currentRect.h > 0)) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+      ctx.fillRect(currentRect.x, currentRect.y, currentRect.w, currentRect.h);
+      ctx.strokeStyle = '#ef4444';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(currentRect.x, currentRect.y, currentRect.w, currentRect.h);
+      ctx.setLineDash([]);
+    }
+  }, [imageObj, redactions, currentRect]);
+
+  useEffect(() => {
+    redraw();
+  }, [redraw]);
+
+  function getCanvasCoords(e) {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    let clientX = e.clientX;
+    let clientY = e.clientY;
+    if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    }
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }
+
+  function handlePointerDown(e) {
+    if (!imageObj) return;
+    if (e.touches) e.preventDefault();
+    const coords = getCanvasCoords(e);
+    setIsDrawing(true);
+    setDragStart(coords);
+    setCurrentRect({ x: coords.x, y: coords.y, w: 0, h: 0 });
+  }
+
+  function handlePointerMove(e) {
+    if (!isDrawing || !dragStart) return;
+    if (e.touches) e.preventDefault();
+    const coords = getCanvasCoords(e);
+    const x = Math.min(dragStart.x, coords.x);
+    const y = Math.min(dragStart.y, coords.y);
+    const w = Math.abs(coords.x - dragStart.x);
+    const h = Math.abs(coords.y - dragStart.y);
+    setCurrentRect({ x, y, w, h });
+  }
+
+  function handlePointerUp() {
+    if (!isDrawing || !currentRect) {
+      setIsDrawing(false);
+      setDragStart(null);
+      setCurrentRect(null);
+      return;
+    }
+    // Only commit rectangles that are at least 4x4 px
+    if (currentRect.w >= 4 && currentRect.h >= 4) {
+      setRedactions(prev => [...prev, currentRect]);
+    }
+    setIsDrawing(false);
+    setDragStart(null);
+    setCurrentRect(null);
+  }
+
+  function handleUndoRedaction() {
+    setRedactions(prev => prev.slice(0, -1));
+  }
+
+  function handleClearRedactions() {
+    setRedactions([]);
+  }
+
   async function handleFile(e) {
     const f = e.target.files?.[0];
     if (!f) return;
     setFile(f);
-    setBusy(true);
-    try {
-      const calculatedHash = await sha256(f);
-      const sizeKb = (f.size / 1024).toFixed(2);
-      const record = {
-        fileName: f.name,
-        fileSize: `${sizeKb} KB`,
-        fileType: f.type || 'application/octet-stream',
-        fileHash: calculatedHash
+    setFileRecord(null);
+    setRedactions([]);
+
+    if (f.type && f.type.startsWith('image/')) {
+      setIsImage(true);
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          setImageObj(img);
+          const canvas = canvasRef.current;
+          if (canvas) {
+            canvas.width = img.naturalWidth || img.width;
+            canvas.height = img.naturalHeight || img.height;
+          }
+        };
+        img.src = event.target.result;
       };
-      setFileRecord(record);
-      if (onEvidenceChange) {
-        onEvidenceChange(record);
+      reader.readAsDataURL(f);
+    } else {
+      // Non-image document: hash directly
+      setIsImage(false);
+      setImageObj(null);
+      setBusy(true);
+      try {
+        const calculatedHash = await sha256(f);
+        const sizeKb = (f.size / 1024).toFixed(2);
+        const record = {
+          fileName: f.name,
+          fileSize: `${sizeKb} KB`,
+          fileType: f.type || 'application/octet-stream',
+          fileHash: calculatedHash
+        };
+        setFileRecord(record);
+        if (onEvidenceChange) {
+          onEvidenceChange(record);
+        }
+      } finally {
+        setBusy(false);
       }
-    } finally {
-      setBusy(false);
     }
+  }
+
+  // Feature 1 Action: Apply Redactions & Hash
+  async function applyRedactionsAndHash() {
+    const canvas = canvasRef.current;
+    if (!canvas || !imageObj) return;
+    setBusy(true);
+
+    // Final clean render of canvas with solid black redaction blocks
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(imageObj, 0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#000000';
+    for (const r of redactions) {
+      ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+
+    canvas.toBlob(async (blob) => {
+      try {
+        if (!blob) throw new Error('Canvas blob generation failed');
+        const calculatedHash = await sha256(blob);
+        const sizeKb = (blob.size / 1024).toFixed(2);
+        const baseName = file?.name ? file.name.replace(/\.[^/.]+$/, '') : 'evidence';
+        const finalName = `${baseName}-redacted.png`;
+
+        const record = {
+          fileName: finalName,
+          fileSize: `${sizeKb} KB`,
+          fileType: 'image/png',
+          fileHash: calculatedHash
+        };
+        setFileRecord(record);
+        if (onEvidenceChange) {
+          onEvidenceChange(record);
+        }
+      } finally {
+        setBusy(false);
+      }
+    }, 'image/png');
   }
 
   function copy() {
@@ -537,6 +710,89 @@ export default function Evidence({
           </div>
         </label>
 
+        {/* Feature 1: The Screenshot Redactor Canvas Studio */}
+        {isImage && imageObj && (
+          <div className="mt-5 p-4 rounded-2xl bg-slate-900 border border-slate-800 text-white">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-3 border-b border-slate-800 gap-2">
+              <div className="flex items-center gap-2">
+                <EyeOff className="w-4 h-4 text-teal-400" />
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-200">
+                  Privacy Redaction Studio
+                </h4>
+                <span className="text-[10px] bg-teal-950 text-teal-300 border border-teal-800 px-2 py-0.5 rounded-full font-mono">
+                  {redactions.length} redacted area{redactions.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleUndoRedaction}
+                  disabled={redactions.length === 0}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:hover:bg-slate-800 px-2.5 py-1 rounded-lg transition"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Undo
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearRedactions}
+                  disabled={redactions.length === 0}
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-300 hover:text-white bg-rose-950/60 hover:bg-rose-900 border border-rose-900/60 disabled:opacity-40 px-2.5 py-1 rounded-lg transition"
+                >
+                  <Eraser className="w-3 h-3" />
+                  Clear All
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-400 mb-3 leading-relaxed">
+              Drag black boxes across private details (phone numbers, faces, chat partner names) to censor PII before hashing.
+            </p>
+
+            {/* Interactive HTML5 Canvas */}
+            <div className="relative border border-slate-800 rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center max-h-[480px]">
+              <canvas
+                ref={canvasRef}
+                onMouseDown={handlePointerDown}
+                onMouseMove={handlePointerMove}
+                onMouseUp={handlePointerUp}
+                onTouchStart={handlePointerDown}
+                onTouchMove={handlePointerMove}
+                onTouchEnd={handlePointerUp}
+                className="max-w-full max-h-[460px] object-contain cursor-crosshair touch-none select-none"
+              />
+            </div>
+
+            {/* Apply Redactions & Hash Button */}
+            <div className="mt-3.5 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-[10px] text-slate-400 italic">
+                Only the redacted pixel data will be hashed. Original PII is never stored or hashed.
+              </span>
+
+              <button
+                type="button"
+                onClick={applyRedactionsAndHash}
+                disabled={busy}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-400 hover:to-cyan-400 text-white shadow-lg shadow-teal-500/20 text-xs tracking-wide transition cursor-pointer"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Hashing Redacted Image…
+                  </>
+                ) : (
+                  <>
+                    <Shield className="w-3.5 h-3.5" />
+                    Apply Redactions & Hash
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Evidence Integrity Record UI Block */}
         {activeRecord && (
           <div className="mt-4 bg-slate-50 rounded-xl border border-slate-200 p-4">
             <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
@@ -587,6 +843,7 @@ export default function Evidence({
               )}
             </div>
 
+            {/* Exact required disclaimer */}
             <p className="mt-3 text-[11px] text-slate-500 italic leading-relaxed">
               This SHA-256 hash verifies the file has not been altered since this moment. It does not establish chain of custody or authenticity. The file never left your device.
             </p>
