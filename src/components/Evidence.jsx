@@ -451,7 +451,8 @@ export default function Evidence({
   result,
   intake = {},
   evidenceData = null,
-  onEvidenceChange = null
+  onEvidenceChange = null,
+  onDraftDownloaded = null
 }) {
   const [file, setFile] = useState(null);
   const [fileRecord, setFileRecord] = useState(evidenceData);
@@ -595,7 +596,10 @@ export default function Evidence({
         <div className="mt-5 flex flex-col sm:flex-row gap-3">
           <button
             type="button"
-            onClick={() => downloadComplaintDraft(lang, intake, result, activeRecord)}
+            onClick={() => {
+              downloadComplaintDraft(lang, intake, result, activeRecord);
+              if (onDraftDownloaded) onDraftDownloaded();
+            }}
             disabled={busy}
             className={`flex-1 py-3 px-4 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
               !busy

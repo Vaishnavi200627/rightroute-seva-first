@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Shield, Globe, Languages, ClipboardList } from 'lucide-react';
+import { Shield, Globe, Languages, ClipboardList, LogOut } from 'lucide-react';
 import { resolveRoute, RULESET_META } from './lib/engine';
 import { ping } from './lib/analytics';
 import { t } from './i18n/strings';
@@ -19,6 +19,60 @@ function Badge({ icon: Icon, label }) {
   );
 }
 
+/**
+ * Quick Exit Safety Button
+ * Replaces browser location immediately with google.com so clicking "Back"
+ * does not return to the application, safeguarding the user.
+ */
+function QuickExitButton({ lang = 'en' }) {
+  function handleExit() {
+    window.location.replace('https://www.google.com');
+  }
+
+  return (
+    <aside
+      aria-label="Safety controls"
+      className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-1 pointer-events-auto"
+    >
+      <button
+        type="button"
+        onClick={handleExit}
+        className="group flex items-center gap-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-bold text-xs sm:text-sm px-4 py-2.5 rounded-full shadow-2xl shadow-red-600/50 hover:shadow-red-600/70 transition-all hover:scale-105 active:scale-95 cursor-pointer border border-red-500/50"
+        title={t(lang, 'quickExitTooltip')}
+        aria-label="Quick Exit"
+      >
+        <LogOut className="w-4 h-4 text-white" />
+        <span>{t(lang, 'quickExit')}</span>
+      </button>
+      <span className="text-[10px] text-slate-600 bg-white/95 backdrop-blur px-2.5 py-0.5 rounded-full shadow-md border border-slate-200 pointer-events-none select-none font-medium">
+        {t(lang, 'quickExitTooltip')}
+      </span>
+    </aside>
+  );
+}
+
+/**
+ * DPDP-Compliant Privacy Notice Component
+ */
+function DpdpFooter({ lang = 'en' }) {
+  return (
+    <footer className="max-w-3xl mx-auto px-4 py-8 text-xs text-center space-y-3">
+      <div className="bg-white/80 backdrop-blur border border-teal-200/60 shadow-sm rounded-2xl p-3.5 max-w-2xl mx-auto text-slate-700">
+        <p className="font-semibold text-teal-800 text-[11px] uppercase tracking-wider mb-1 flex items-center justify-center gap-1.5">
+          <Shield className="w-3.5 h-3.5 text-teal-600" />
+          Digital Personal Data Protection (DPDP) Statement
+        </p>
+        <p className="leading-relaxed text-slate-600 text-xs">
+          Privacy by Design: RightRoute processes all data locally in your browser. We do not upload, store, or track your evidence or personal details, in compliance with DPDP Act principles.
+        </p>
+      </div>
+      <p className="text-slate-400">
+        {t(lang, 'footerVersion')}{RULESET_META.version} · {RULESET_META.jurisdiction} · {RULESET_META.lastReviewed}
+      </p>
+    </footer>
+  );
+}
+
 export default function App() {
   const [lang, setLang] = useState('en');
   const [langChosen, setLangChosen] = useState(false);
@@ -28,6 +82,15 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [evidenceData, setEvidenceData] = useState(null);
+  const [integrityLog, setIntegrityLog] = useState([]);
+
+  function addLog(actionText) {
+    const entry = {
+      time: new Date().toLocaleTimeString(),
+      action: actionText
+    };
+    setIntegrityLog(prev => [...prev, entry]);
+  }
 
   function pickLanguage(code) {
     setLang(code);
@@ -39,11 +102,20 @@ export default function App() {
     setCategory(id);
     setIntake({ category: id, localRefId: `RR-${ts}`, refTimestamp: ts });
     setResult(null);
+
+    const categoryNames = {
+      ncii: 'Non-Consensual Intimate Imagery (NCII)',
+      fraud: 'Financial Cyber Fraud',
+      account: 'Account or Device Takeover',
+      stalking: 'Cyber Stalking / Harassment'
+    };
+    addLog(`Crisis category selected: ${categoryNames[id] || id}`);
   }
 
   function submitIntake() {
     setBusy(true);
     ping(category, lang);
+    addLog('Intake responses submitted for ruleset evaluation');
     setTimeout(() => {
       setResult(resolveRoute(intake));
       setBusy(false);
@@ -51,19 +123,38 @@ export default function App() {
     }, 400);
   }
 
+  function handleEvidenceChange(record) {
+    setEvidenceData(record);
+    if (record?.fileHash) {
+      addLog('Evidence file integrity hashed (SHA-256 computed)');
+    }
+  }
+
+  function handleDownloadDraft() {
+    downloadComplaintDraft(lang, intake, result, evidenceData);
+    addLog('Draft complaint PDF generated');
+  }
+
   function reset() {
     setCategory(null);
     setIntake({});
     setResult(null);
     setEvidenceData(null);
+    setIntegrityLog([]);
   }
 
   if (!langChosen) {
-    return <LanguagePicker onPick={pickLanguage} lang={lang} />;
+    return (
+      <div className="relative">
+        <LanguagePicker onPick={pickLanguage} lang={lang} />
+        <DpdpFooter lang={lang} />
+        <QuickExitButton lang={lang} />
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30 relative">
       <header className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-20">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between gap-3">
           <button
@@ -114,7 +205,8 @@ export default function App() {
               result={result}
               lang={lang}
               evidence={evidenceData}
-              onDownloadDraft={() => downloadComplaintDraft(lang, intake, result, evidenceData)}
+              integrityLog={integrityLog}
+              onDownloadDraft={handleDownloadDraft}
               onNavigateBack={() => setView('navigator')}
             />
           </>
@@ -159,7 +251,8 @@ export default function App() {
                   result={result}
                   intake={intake}
                   evidenceData={evidenceData}
-                  onEvidenceChange={setEvidenceData}
+                  onEvidenceChange={handleEvidenceChange}
+                  onDraftDownloaded={() => addLog('Draft complaint PDF generated')}
                 />
               </>
             )}
@@ -167,9 +260,8 @@ export default function App() {
         )}
       </main>
 
-      <footer className="max-w-3xl mx-auto px-4 py-8 text-xs text-slate-400 text-center">
-        {t(lang, 'footerVersion')}{RULESET_META.version} · {RULESET_META.jurisdiction} · {RULESET_META.lastReviewed}
-      </footer>
+      <DpdpFooter lang={lang} />
+      <QuickExitButton lang={lang} />
     </div>
   );
 }

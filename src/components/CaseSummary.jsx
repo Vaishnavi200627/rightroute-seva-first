@@ -10,7 +10,9 @@ import {
   FileLock,
   Layers,
   AlertOctagon,
-  Clock
+  Clock,
+  Activity,
+  ClipboardCopy
 } from 'lucide-react';
 import { t } from '../i18n/strings';
 import { tierLabel } from '../lib/engine';
@@ -18,26 +20,76 @@ import { getPotentialLegalSections } from '../lib/legal';
 import { downloadComplaintDraft } from './Evidence';
 
 /**
+ * Generates a clean, plain-text incident description formatted for NCRP.
+ * Strictly plain text, zero markdown.
+ */
+function generateNcrpDescription(intake = {}, result = null) {
+  const catMap = {
+    ncii: 'Non-Consensual Intimate Imagery (NCII) / Cyber Blackmail',
+    fraud: 'Financial Cyber Fraud',
+    account: 'Account or Device Takeover / Unauthorized Access',
+    stalking: 'Cyber Stalking / Persistent Online Harassment'
+  };
+
+  const activeCategory =
+    intake?.category ||
+    (result?.matchedOn?.find(m => m.key === 'category')?.value) ||
+    '';
+  const categoryName = activeCategory ? (catMap[activeCategory] || activeCategory) : 'Cyber Incident';
+
+  const dangerStr = intake?.physicalDanger === true ? 'Yes' : intake?.physicalDanger === false ? 'No' : 'Not Provided';
+  const lossStr = intake?.moneyLost === true ? 'Yes' : intake?.moneyLost === false ? 'No' : 'Not Provided';
+  const minorStr = intake?.minor === true ? 'Yes' : intake?.minor === false ? 'No' : 'Not Provided';
+  const threatStr = intake?.threatened === true ? 'Yes' : intake?.threatened === false ? 'No' : 'Not Provided';
+  const ongoingStr = intake?.ongoing === true ? 'Yes' : intake?.ongoing === false ? 'No' : 'Not Provided';
+
+  let narrative = `I am reporting an incident of ${categoryName}. The victim is in immediate danger: ${dangerStr}. Financial loss occurred: ${lossStr}.`;
+
+  if (activeCategory === 'ncii') {
+    narrative += ` Minor involved: ${minorStr}. Active threat or extortion: ${threatStr}.`;
+    if (intake?.ownership) {
+      const originMap = {
+        self: 'Self-created (private/consensual)',
+        consented: 'Created with consent by third party',
+        nonconsented: 'Captured or obtained without consent'
+      };
+      narrative += ` Media origin: ${originMap[intake.ownership] || intake.ownership}.`;
+    }
+  } else if (activeCategory === 'fraud') {
+    if (intake?.fraudType) {
+      narrative += ` Fraud classification: ${intake.fraudType.toUpperCase()}.`;
+    }
+  } else if (activeCategory === 'account') {
+    if (intake?.accountType) {
+      narrative += ` Account issue type: ${intake.accountType}.`;
+    }
+  } else if (activeCategory === 'stalking') {
+    narrative += ` Ongoing harassment: ${ongoingStr}.`;
+  }
+
+  if (result?.label) {
+    narrative += ` Identified crisis tier: ${result.label}.`;
+  }
+
+  return narrative;
+}
+
+/**
  * CaseSummary Component
- * Displays a client-side crisis dossier and statutory reference overview.
- *
- * @param {object} props
- * @param {object} props.intake - Current intake question responses
- * @param {object|null} props.result - Evaluated route result
- * @param {string} props.lang - Active language code
- * @param {object|null} props.evidence - Hashed file metadata { fileName, fileSize, fileType, fileHash }
- * @param {function} [props.onDownloadDraft] - Optional handler to trigger draft download
- * @param {function} [props.onNavigateBack] - Optional handler to navigate back to flow
+ * Displays a client-side crisis dossier, statutory reference overview,
+ * NCRP Copy-Paste kit, and local session integrity timeline.
  */
 export default function CaseSummary({
   intake = {},
   result = null,
   lang = 'en',
   evidence = null,
+  integrityLog = [],
   onDownloadDraft = null,
   onNavigateBack = null
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copiedHash, setCopiedHash] = useState(false);
+  const [ncrpCopied, setNcrpCopied] = useState(false);
 
   // Consistent local ref id for this intake
   const localRefId = useMemo(() => {
@@ -101,11 +153,23 @@ export default function CaseSummary({
   // Legal Sections
   const legalSections = getPotentialLegalSections(activeCategory);
 
+  // Plain-text NCRP Description
+  const ncrpText = useMemo(() => {
+    return generateNcrpDescription(intake, result);
+  }, [intake, result]);
+
   function copyHash() {
     if (!evidence?.fileHash) return;
     navigator.clipboard.writeText(evidence.fileHash);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    setCopiedHash(true);
+    setTimeout(() => setCopiedHash(false), 1500);
+  }
+
+  function copyNcrp() {
+    if (!ncrpText) return;
+    navigator.clipboard.writeText(ncrpText);
+    setNcrpCopied(true);
+    setTimeout(() => setNcrpCopied(false), 2000);
   }
 
   function handleDownload() {
@@ -230,6 +294,47 @@ export default function CaseSummary({
           </div>
         </div>
 
+        {/* Feature 3: The NCRP Copy-Paste Kit */}
+        <div className="mt-8 bg-slate-950/80 border border-slate-800 rounded-2xl p-5 sm:p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-slate-800 gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+                <ClipboardCopy className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                  NCRP Incident Description (Copy-Paste Ready)
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Ready-to-use factual narrative formatted for cybercrime reporting.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={copyNcrp}
+              className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition shadow-sm ${
+                ncrpCopied
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-teal-600 hover:bg-teal-500 text-white active:bg-teal-700'
+              }`}
+            >
+              {ncrpCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              {ncrpCopied ? 'Copied!' : 'Copy to Clipboard'}
+            </button>
+          </div>
+
+          <div className="bg-slate-900 border border-slate-800/90 rounded-xl p-4 text-xs sm:text-sm text-slate-200 leading-relaxed font-sans select-all break-words">
+            {ncrpText}
+          </div>
+
+          {/* Exact required disclaimer */}
+          <p className="mt-3 text-xs text-slate-400 italic">
+            Formatted for the National Cyber Crime Reporting Portal. Review before pasting.
+          </p>
+        </div>
+
         {/* Legal Mapping Section */}
         <div className="mt-8 bg-slate-950/80 border border-slate-800 rounded-2xl p-5 sm:p-6">
           <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-800">
@@ -302,8 +407,8 @@ export default function CaseSummary({
                 onClick={copyHash}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-300 hover:text-white bg-slate-900 hover:bg-slate-800 border border-teal-800 px-3 py-1 rounded-lg transition"
               >
-                {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                {copied ? t(lang, 'copied') : 'Copy Hash'}
+                {copiedHash ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedHash ? t(lang, 'copied') : 'Copy Hash'}
               </button>
             )}
           </div>
@@ -356,6 +461,53 @@ export default function CaseSummary({
               </p>
             </div>
           )}
+        </div>
+
+        {/* Feature 2: Local Session Integrity (Timeline Component) */}
+        <div className="mt-8 bg-slate-950/80 border border-slate-800 rounded-2xl p-5 sm:p-6">
+          <div className="flex items-center gap-2.5 pb-3 mb-4 border-b border-slate-800">
+            <div className="w-8 h-8 rounded-lg bg-teal-500/10 border border-teal-500/30 flex items-center justify-center text-teal-400">
+              <Activity className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white tracking-wide uppercase">
+                Local Session Integrity
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                In-memory client-side audit trail for this active crisis session.
+              </p>
+            </div>
+          </div>
+
+          {integrityLog.length > 0 ? (
+            <div className="relative pl-6 space-y-4 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
+              {integrityLog.map((item, idx) => (
+                <div key={idx} className="relative flex items-start gap-3">
+                  <div className="absolute -left-6 top-1.5 w-2 h-2 rounded-full bg-teal-400 ring-4 ring-slate-950" />
+                  <div className="flex-1 bg-slate-900/70 border border-slate-800/80 p-3 rounded-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                    <span className="text-xs sm:text-sm text-slate-200 font-medium">
+                      {item.action}
+                    </span>
+                    <span className="font-mono text-[11px] text-teal-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800/80 flex-shrink-0 self-start sm:self-auto">
+                      {item.time}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-5 px-4 bg-slate-900/30 rounded-xl border border-dashed border-slate-800">
+              <Clock className="w-6 h-6 text-slate-600 mx-auto mb-1.5" />
+              <p className="text-xs text-slate-400">
+                Session active. Actions will be logged here chronologically as you interact with RightRoute.
+              </p>
+            </div>
+          )}
+
+          {/* Exact required disclaimer */}
+          <p className="mt-4 text-xs text-slate-400 italic bg-slate-900/60 p-3 rounded-xl border border-slate-800 leading-relaxed">
+            This is a local chronological record generated on this device. It is not a legal chain of custody.
+          </p>
         </div>
 
         {/* Narrative / Intake Overview */}
