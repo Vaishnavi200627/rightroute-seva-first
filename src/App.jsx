@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Shield, Globe, Languages, ClipboardList, LogOut, Radio, Copy, Check } from 'lucide-react';
 import { resolveRoute, RULESET_META } from './lib/engine';
 import { ping } from './lib/analytics';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle2, Clock, ShieldAlert, Sparkles } from 'lucide-react';
 import { t } from '../i18n/strings';
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Award, Users, FileText, Clock, FolderLock, ExternalLink,
   ChevronRight, CircleCheck, CircleX, Route, Lightbulb, History
